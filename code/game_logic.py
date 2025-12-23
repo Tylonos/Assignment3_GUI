@@ -91,42 +91,65 @@ class Game21:
         1. Count all Aces as 11 initially.
         2. If total > 21, subtract 10 for each Ace, so it effectively makes them = 1
         """
+        total = 0
+        aces = 0
+
+        for card in hand:
+            v = self.card_value(card)
+            total += v
+            if card[:-1] == "A":
+                aces += 1
+
+        # If we bust, downgrade Aces from 11 to 1 by subtracting 10 per Ace as needed
+        while total > 21 and aces > 0:
+            total -= 10
+            aces -= 1
+
+        return total
 
     # PLAYER ACTIONS
 
     def player_hit(self):
-        # TODO: Add one card to the player's hand and return it, so the UI can display the card. Remove pass when complete.
-        pass
+        card = self.draw_card()
+        self.player_hand.append(card)
+        return card
 
     def player_total(self):
-        # TODO: Return the player's total. Remove pass when complete.
-        pass
+        return self.hand_total(self.player_hand)
 
     # DEALER ACTIONS
 
     def reveal_dealer_card(self):
-        # TODO: Called when the player presses Stand. After this, the UI should show both dealer cards. Remove pass when complete.
-        pass
+        self.dealer_hidden_revealed = True
 
 
     def dealer_total(self):
-        # TODO: Return the dealer's total. Remove pass when complete.
-        pass
+        return self.hand_total(self.dealer_hand)
 
     def play_dealer_turn(self):
-        # TODO: Dealer must hit until their total is 17 or more, then stand.  Remove pass when complete.
-        pass
+        drawn = []
+        # Dealer hits while total is less than 17
+        while self.dealer_total() < 17:
+            card = self.draw_card()
+            self.dealer_hand.append(card)
+            drawn.append(card)
+        return drawn
 
     # WINNER DETERMINATION
 
     def decide_winner(self):
-        # TODO: Decide the outcome of the round.
-        """
-        Example: return the following text messages:
-        - "Player busts. Dealer wins!"
-        - "Dealer busts. Player wins!"
-        - "Player wins!"
-        - "Dealer wins!"
-        - "Push (tie)."
-        """
+        player = self.player_total()
+        dealer = self.dealer_total()
+
+        if player > 21:
+            return "Player busts. Dealer wins!"
+        if dealer > 21:
+            return "Dealer busts. Player wins!"
+
+        if player > dealer:
+            return "Player wins!"
+        if dealer > player:
+            return "Dealer wins!"
+        return "Push (tie)."
+
 
