@@ -140,6 +140,19 @@ class MainWindow(QMainWindow):
         layout.addWidget(label)
         label.setProperty("card", True)
 
+    def update_totals(self, full_dealer: bool):
+        # Player total is always visible
+        p = self.game.player_total()
+        self.playerTotalLabel.setText(f"Total: {p}")
+
+        # Dealer total depends on reveal state
+        if full_dealer:
+            d = self.game.dealer_total()
+            self.dealerTotalLabel.setText(f"Total: {d}")
+            self.scoreboardLabel.setText(f"Scoreboard — Player: {p} | Dealer: {d}")
+        else:
+            self.scoreboardLabel.setText(f"Scoreboard — Player: {p} | Dealer: ?")
+
     def update_dealer_cards(self, full=False):
         # Show dealer cards; hide the first card until revealed
         self.clear_layout(self.dealerCardsLayout)
@@ -150,26 +163,41 @@ class MainWindow(QMainWindow):
             else:
                 self.add_card(self.dealerCardsLayout, card)
 
-        # TODO: update relevant labels in response to dealer actions. Remove pass when complete
+        # Update dealer total label depending on whether the hidden card is revealed
         if full:
-            pass
+            self.dealerTotalLabel.setText(f"Total: {self.game.dealer_total()}")
         else:
-            pass
+            # Show only the visible (second) card total while the first is hidden
+            if len(self.game.dealer_hand) >= 2:
+                visible_only = [self.game.dealer_hand[1]]
+                self.dealerTotalLabel.setText(f"Total: {self.game.hand_total(visible_only)}")
+            else:
+                self.dealerTotalLabel.setText("Total: ?")
 
     def new_round_setup(self):
-        # TODO: Prepare a fresh visual layout
+        # Clear previous cards
+        self.clear_layout(self.dealerCardsLayout)
+        self.clear_layout(self.playerCardsLayout)
 
-        # TODO: update relevant labels (reset dealer and player totals)
+        # Deal a fresh round
+        self.game.deal_initial_cards()
 
-        # TODO: display new cards for dealers and players
+        # Show cards (dealer first card hidden)
+        self.update_dealer_cards(full=False)
+        for card in self.game.player_hand:
+            self.add_card(self.playerCardsLayout, card)
 
-        # TODO: enable buttons for Stand and Hit - Remove pass when complete
-        pass
+        # Update totals and UI state
+        self.update_totals(full_dealer=False)
+        self.feedbackLabel.setText("Your move: Hit or Stand")
+
+        self.hitButton.setEnabled(True)
+        self.standButton.setEnabled(True)
 
 
     def end_round(self):
-        # TODO: Disable button actions after the round ends. Remove pass when complete
-        pass
+        self.hitButton.setEnabled(False)
+        self.standButton.setEnabled(False)
 
 
 # complete
