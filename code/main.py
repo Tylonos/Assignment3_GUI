@@ -50,7 +50,13 @@ class MainWindow(QMainWindow):
         playerLayout.addWidget(self.playerTotalLabel)
         playerLayout.addLayout(self.playerCardsLayout)
 
+        # --- Scoreboard + Feedback ---
+        self.scoreboardLabel = QLabel("Scoreboard — Player: 0 | Dealer: ?")
+        self.scoreboardLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        self.feedbackLabel = QLabel("Press New Round to start")
+        self.feedbackLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.feedbackLabel.setWordWrap(True)
 
     # BUTTON ACTIONS
 
