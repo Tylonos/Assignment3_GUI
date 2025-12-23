@@ -1,6 +1,9 @@
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QSizePolicy
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 import sys
+
+from pathlib import Path
 
 # this project should use a modular approach - try to keep UI logic and game logic separate
 from game_logic import Game21
@@ -15,6 +18,8 @@ class MainWindow(QMainWindow):
         self.setGeometry(200, 200, 400, 400)
 
         self.game = Game21()
+        self.cards_dir = Path(__file__).resolve().parent / "assets" / "cards"
+        self.card_size = (90, 130)  # (width, height) target
 
         self.initUI()
 
@@ -36,6 +41,9 @@ class MainWindow(QMainWindow):
 
         self.dealerCardsLayout = QHBoxLayout()
         self.dealerCardsLayout.setSpacing(10)
+
+        dealerLayout.addWidget(self.dealerTotalLabel)
+        dealerLayout.addLayout(self.dealerCardsLayout)
 
         # --- Player Section ---
         playerBox = QGroupBox("Player")
@@ -135,10 +143,88 @@ class MainWindow(QMainWindow):
                 widget.deleteLater()
 
     def add_card(self, layout, card_text):
-        # Create a QLabel showing the card value and add it to the chosen layout.
-        label = QLabel(card_text)
+        """Add a card widget to the given layout. Uses an image if available, else falls back to text."""
+        label = QLabel()
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+
+        pix = self.card_pixmap(card_text)
+        if pix is not None:
+            w, h = self.card_size
+            label.setPixmap(pix.scaled(w, h, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            label.setFixedSize(w, h)
+        else:
+            # Fallback to readable text
+            label.setText(card_text)
+            label.setMinimumWidth(60)
+            label.setMinimumHeight(40)
+            label.setStyleSheet("""
+                QLabel {
+                    padding: 6px;
+                    font-size: 14px;
+                    border: 1px solid #888;
+                    border-radius: 6px;
+                    background: white;
+                }
+            """)
+
         layout.addWidget(label)
         label.setProperty("card", True)
+
+    def card_pixmap(self, card_text: str):
+        """Return a QPixmap for a card like 'A♠' if an image exists, else None."""
+        path = self.resolve_card_image_path(card_text)
+        if path is None:
+            return None
+        pix = QPixmap(str(path))
+        if pix.isNull():
+            return None
+        return pix
+
+    def resolve_card_image_path(self, card_text: str):
+        """Try several filename conventions for the given card_text."""
+        if not self.cards_dir.exists():
+            return None
+
+        # Dealer back image support
+        if card_text == "??":
+            for name in ("back.png", "card_back.png", "BACK.png"):
+                p = self.cards_dir / name
+                if p.exists():
+                    return p
+            return None
+
+        # Split rank/suit from text representation
+        suit_char = card_text[-1]
+        rank = card_text[:-1]
+
+        suit_map = {"♠": "S", "♥": "H", "♦": "D", "♣": "C"}
+        suit_letter = suit_map.get(suit_char, "")
+
+        candidates = []
+
+        # 1) rank+suitLetter
+        if suit_letter:
+            candidates.append(f"{rank}{suit_letter}.png")
+            candidates.append(f"{rank}_{suit_letter}.png")
+            candidates.append(f"{rank}{suit_letter}.jpg")
+            candidates.append(f"{rank}_{suit_letter}.jpg")
+
+        # 2) unicode suit in filename
+        candidates.append(f"{rank}{suit_char}.png")
+        candidates.append(f"{rank}{suit_char}.jpg")
+
+        # 3) lower-case variants
+        if suit_letter:
+            candidates.append(f"{rank}{suit_letter.lower()}.png")
+            candidates.append(f"{rank}_{suit_letter.lower()}.png")
+
+        for filename in candidates:
+            p = self.cards_dir / filename
+            if p.exists():
+                return p
+
+        return None
 
     def update_totals(self, full_dealer: bool):
         # Player total is always visible
