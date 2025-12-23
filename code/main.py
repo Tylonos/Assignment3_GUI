@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QSizePolicy
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QPixmap, QAction
 from PyQt6.QtCore import Qt
 import sys
 
@@ -19,7 +19,77 @@ class MainWindow(QMainWindow):
 
         self.game = Game21()
         self.cards_dir = Path(__file__).resolve().parent / "assets" / "cards"
-        self.card_size = (90, 130)  # (width, height) target
+        self.card_min_size = (90, 130)  # minimal (width, height)
+        self.card_size = self.card_min_size
+
+        self.is_dark = False
+
+        # App-wide stylesheets (kept simple)
+        self.light_qss = """
+            QWidget { background: #ffffff; color: #111; }
+            QGroupBox {
+                border: 1px solid #cfcfcf;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 6px;
+                font-weight: bold;
+            }
+            QLabel { font-size: 13px; }
+            QPushButton {
+                border: 1px solid #444;
+                font-weight: bold;
+                padding: 6px 14px;
+                background-color: #f5f5f5;
+            }
+            QPushButton:focus {
+                outline: none;
+            }
+            QPushButton:hover { background-color: #e6e6e6; }
+            QPushButton:disabled {
+                color: #999;
+                border: 1px solid #aaa;
+                background-color: #f0f0f0;
+            }
+        """
+
+        self.dark_qss = """
+            QWidget { background: #121212; color: #eee; }
+            QGroupBox {
+                border: 1px solid #3a3a3a;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 6px;
+                font-weight: bold;
+                color: #eee;
+            }
+            QLabel { font-size: 13px; }
+            QPushButton {
+                border: 1px solid #888;
+                font-weight: bold;
+                padding: 6px 14px;
+                background-color: #1f1f1f;
+                color: #eee;
+            }
+            QPushButton:focus {
+                outline: none;
+            }
+            QPushButton:hover { background-color: #2a2a2a; }
+            QPushButton:disabled {
+                color: #777;
+                border: 1px solid #555;
+                background-color: #1a1a1a;
+            }
+        """
 
         self.initUI()
 
@@ -31,6 +101,14 @@ class MainWindow(QMainWindow):
 
         self.mainLayout = QVBoxLayout(central)
         self.mainLayout.setSpacing(12)
+
+        #  Menu bar: theme toggle 
+        view_menu = self.menuBar().addMenu("View")
+        self.themeAction = QAction("Dark mode", self)
+        self.themeAction.setCheckable(True)
+        self.themeAction.setChecked(self.is_dark)
+        self.themeAction.triggered.connect(self.toggle_theme)
+        view_menu.addAction(self.themeAction)
 
         # Dealer Section
         dealerBox = QGroupBox("Dealer")
@@ -45,7 +123,7 @@ class MainWindow(QMainWindow):
         dealerLayout.addWidget(self.dealerTotalLabel)
         dealerLayout.addLayout(self.dealerCardsLayout)
 
-        # --- Player Section ---
+        #  Player Section 
         playerBox = QGroupBox("Player")
         playerLayout = QVBoxLayout(playerBox)
 
@@ -58,7 +136,7 @@ class MainWindow(QMainWindow):
         playerLayout.addWidget(self.playerTotalLabel)
         playerLayout.addLayout(self.playerCardsLayout)
 
-        # --- Scoreboard + Feedback ---
+        #  Scoreboard + Feedback 
         self.scoreboardLabel = QLabel("Scoreboard — Player: 0 | Dealer: ?")
         self.scoreboardLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -66,13 +144,17 @@ class MainWindow(QMainWindow):
         self.feedbackLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.feedbackLabel.setWordWrap(True)
 
-        # --- Controls ---
+        #  Controls 
         controlsBox = QGroupBox("Controls")
         controlsLayout = QHBoxLayout(controlsBox)
 
         self.hitButton = QPushButton("Hit")
         self.standButton = QPushButton("Stand")
         self.newRoundButton = QPushButton("New Round")
+
+        # Prevent buttons from stretching and hiding the checkbox on small widths
+        for b in (self.hitButton, self.standButton, self.newRoundButton):
+            b.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
         self.hitButton.clicked.connect(self.on_hit)
         self.standButton.clicked.connect(self.on_stand)
@@ -89,6 +171,7 @@ class MainWindow(QMainWindow):
         self.mainLayout.addWidget(self.feedbackLabel)
         self.mainLayout.addWidget(controlsBox)
 
+        self.apply_theme()
         # Start first round immediately
         self.new_round_setup()
 
@@ -147,12 +230,11 @@ class MainWindow(QMainWindow):
         label = QLabel()
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        label.setProperty("card_text", card_text)
 
         pix = self.card_pixmap(card_text)
         if pix is not None:
-            w, h = self.card_size
-            label.setPixmap(pix.scaled(w, h, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-            label.setFixedSize(w, h)
+            self.apply_card_pixmap(label, card_text)
         else:
             # Fallback to readable text
             label.setText(card_text)
@@ -168,6 +250,7 @@ class MainWindow(QMainWindow):
                 }
             """)
 
+        self.recompute_card_size()
         layout.addWidget(label)
         label.setProperty("card", True)
 
@@ -226,6 +309,61 @@ class MainWindow(QMainWindow):
 
         return None
 
+    def recompute_card_size(self):
+        """Compute a target card size based on current window width, but never below the minimum."""
+        min_w, min_h = self.card_min_size
+
+        # Available width inside the central widget
+        cw = self.centralWidget().width() if self.centralWidget() else self.width()
+        available = max(200, cw - 60)  # padding for margins/groupboxes
+
+        # Estimate how many cards we need to fit on the widest row
+        dealer_n = max(2, len(getattr(self.game, "dealer_hand", [])))
+        player_n = max(2, len(getattr(self.game, "player_hand", [])))
+        n = max(dealer_n, player_n)
+
+        spacing = 10
+        total_spacing = spacing * (n - 1)
+        per_card_w = (available - total_spacing) / n if n > 0 else min_w
+
+        # Clamp to at least minimum; cap a bit so they don't become huge
+        w = int(max(min_w, min(200, per_card_w)))
+        h = int(w * (min_h / min_w))
+
+        self.card_size = (w, h)
+
+        # Apply to existing card widgets
+        self.rescale_cards_in_layout(self.dealerCardsLayout)
+        self.rescale_cards_in_layout(self.playerCardsLayout)
+
+    def rescale_cards_in_layout(self, layout):
+        if layout is None:
+            return
+        for i in range(layout.count()):
+            w = layout.itemAt(i).widget()
+            if isinstance(w, QLabel):
+                card_text = w.property("card_text")
+                if not card_text:
+                    continue
+                pix = self.card_pixmap(card_text)
+                if pix is not None:
+                    self.apply_card_pixmap(w, card_text)
+                else:
+                    # Text fallback: still keep a consistent box size
+                    cw, ch = self.card_size
+                    w.setMinimumSize(max(60, cw), max(40, ch))
+
+    def apply_card_pixmap(self, label: QLabel, card_text: str):
+        """Set (and scale) a pixmap for the given label using the current card_size."""
+        pix = self.card_pixmap(card_text)
+        if pix is None:
+            return
+        w, h = self.card_size
+        label.setPixmap(
+            pix.scaled(w, h, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        )
+        label.setFixedSize(w, h)
+
     def update_totals(self, full_dealer: bool):
         # Player total is always visible
         p = self.game.player_total()
@@ -260,6 +398,8 @@ class MainWindow(QMainWindow):
             else:
                 self.dealerTotalLabel.setText("Total: ?")
 
+        self.recompute_card_size()
+
     def new_round_setup(self):
         # Clear previous cards
         self.clear_layout(self.dealerCardsLayout)
@@ -267,6 +407,7 @@ class MainWindow(QMainWindow):
 
         # Deal a fresh round
         self.game.deal_initial_cards()
+        self.recompute_card_size()
 
         # Show cards (dealer first card hidden)
         self.update_dealer_cards(full=False)
@@ -284,6 +425,22 @@ class MainWindow(QMainWindow):
     def end_round(self):
         self.hitButton.setEnabled(False)
         self.standButton.setEnabled(False)
+        self.recompute_card_size()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.recompute_card_size()
+
+    def apply_theme(self):
+        # Apply app-wide theme
+        qss = self.dark_qss if self.is_dark else self.light_qss
+        self.setStyleSheet(qss)
+
+    def toggle_theme(self, checked: bool):
+        self.is_dark = bool(checked)
+        self.apply_theme()
+        if hasattr(self, "themeAction"):
+            self.themeAction.setChecked(self.is_dark)
 
 
 # complete
