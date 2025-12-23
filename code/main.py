@@ -58,6 +58,22 @@ class MainWindow(QMainWindow):
         self.feedbackLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.feedbackLabel.setWordWrap(True)
 
+        # --- Controls ---
+        controlsBox = QGroupBox("Controls")
+        controlsLayout = QHBoxLayout(controlsBox)
+
+        self.hitButton = QPushButton("Hit")
+        self.standButton = QPushButton("Stand")
+        self.newRoundButton = QPushButton("New Round")
+
+        self.hitButton.clicked.connect(self.on_hit)
+        self.standButton.clicked.connect(self.on_stand)
+        self.newRoundButton.clicked.connect(self.on_new_round)
+
+        controlsLayout.addWidget(self.hitButton)
+        controlsLayout.addWidget(self.standButton)
+        controlsLayout.addWidget(self.newRoundButton)
+
     # BUTTON ACTIONS
 
     def on_hit(self):
