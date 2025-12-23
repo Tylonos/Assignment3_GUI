@@ -74,6 +74,16 @@ class MainWindow(QMainWindow):
         controlsLayout.addWidget(self.standButton)
         controlsLayout.addWidget(self.newRoundButton)
 
+        # Add to main layout
+        self.mainLayout.addWidget(dealerBox)
+        self.mainLayout.addWidget(playerBox)
+        self.mainLayout.addWidget(self.scoreboardLabel)
+        self.mainLayout.addWidget(self.feedbackLabel)
+        self.mainLayout.addWidget(controlsBox)
+
+        # Start first round immediately
+        self.new_round_setup()
+
     # BUTTON ACTIONS
 
     def on_hit(self):
