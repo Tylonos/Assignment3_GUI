@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton
 from PyQt6.QtCore import Qt
 import sys
 
@@ -19,19 +19,23 @@ class MainWindow(QMainWindow):
         self.initUI()
 
     def initUI(self):
-        # Create and arrange widgets and layout. Remove pass when complete.
-        pass
-        # TODO: Dealer Section with cards
+        from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGroupBox
 
-        # TODO: Player Section with cards
+        central = QWidget()
+        self.setCentralWidget(central)
 
-        #  TODO: Buttons for hit, stand, new round
+        self.mainLayout = QVBoxLayout(central)
+        self.mainLayout.setSpacing(12)
 
-        #  TODO: Feedback
+        # Dealer Section
+        dealerBox = QGroupBox("Dealer")
+        dealerLayout = QVBoxLayout(dealerBox)
 
-        #  TODO: Add widgets to layout
+        self.dealerTotalLabel = QLabel("Total: ?")
+        self.dealerTotalLabel.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        #  TODO: Trigger a new layout with a new round
+        self.dealerCardsLayout = QHBoxLayout()
+        self.dealerCardsLayout.setSpacing(10)
 
 
     # BUTTON ACTIONS
