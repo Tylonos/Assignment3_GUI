@@ -46,12 +46,33 @@ class MainWindow(QMainWindow):
         self.add_card(self.playerCardsLayout, card)
 
         if self.game.player_total() > 21:
-          # TODO: what should happen if a player goes over 21? Remove pass when complete
-          pass
+            self.feedbackLabel.setText("You busted! Dealer wins.")
+            # Reveal dealer card so totals make sense at the end
+            self.game.reveal_dealer_card()
+            self.update_dealer_cards(full=True)
+            self.update_totals(full_dealer=True)
+            self.end_round()
+        else:
+            self.update_totals(full_dealer=False)
 
     def on_stand(self):
-        # TODO: Player ends turn; dealer reveals their hidden card and plays. Remove pass when complete
-        pass
+        # Player ends turn; dealer reveals and plays
+        self.game.reveal_dealer_card()
+        self.update_dealer_cards(full=True)
+
+        # Dealer hits until 17+
+        drawn = self.game.play_dealer_turn()
+        for card in drawn:
+            self.add_card(self.dealerCardsLayout, card)
+
+        # Decide winner
+        message = self.game.decide_winner()
+        self.feedbackLabel.setText(message)
+
+        # Update totals and lock controls
+        self.update_totals(full_dealer=True)
+        self.end_round()
+
 
     def on_new_round(self):
         self.game.new_round()
