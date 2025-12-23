@@ -37,6 +37,20 @@ class MainWindow(QMainWindow):
         self.dealerCardsLayout = QHBoxLayout()
         self.dealerCardsLayout.setSpacing(10)
 
+        # --- Player Section ---
+        playerBox = QGroupBox("Player")
+        playerLayout = QVBoxLayout(playerBox)
+
+        self.playerTotalLabel = QLabel("Total: 0")
+        self.playerTotalLabel.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        self.playerCardsLayout = QHBoxLayout()
+        self.playerCardsLayout.setSpacing(10)
+
+        playerLayout.addWidget(self.playerTotalLabel)
+        playerLayout.addLayout(self.playerCardsLayout)
+
+
 
     # BUTTON ACTIONS
 
